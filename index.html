@@ -83,7 +83,7 @@ async function loadWebsite() {
 
         let html = await response.text();
 
-        // Base tag fixes relative paths
+        // Inject base tag so relative URLs work
         const baseTag = `<base href="${url}">`;
 
         // Script to route links/forms/redirects through backend
@@ -117,6 +117,7 @@ async function loadWebsite() {
     window.location.assign = function(url) {
         origAssign.call(window.location, proxify(url));
     };
+
     const origReplace = window.location.replace;
     window.location.replace = function(url) {
         origReplace.call(window.location, proxify(url));
@@ -124,6 +125,7 @@ async function loadWebsite() {
 })();
 </script>`;
 
+        // Combine base tag + proxy script + HTML
         if (html.includes("<head>")) {
             html = html.replace("<head>", `<head>${baseTag}${proxyScript}`);
         } else {
