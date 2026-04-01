@@ -1,5 +1,5 @@
 {
-  "name": "browser-renderer",
+  "name": "web-renderer",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "express": "^4.18.2",
-    "puppeteer": "^22.0.0",
+    "puppeteer": "^21.3.8",
     "cors": "^2.8.5"
   }
 }
