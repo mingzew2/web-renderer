@@ -83,10 +83,10 @@ async function loadWebsite() {
 
         let html = await response.text();
 
-        // Inject base tag for relative URLs
+        // Base tag fixes relative paths
         const baseTag = `<base href="${url}">`;
 
-        // Inject proxy script to handle redirects through backend
+        // Script to route links/forms/redirects through backend
         const proxyScript = `
 <script>
 (function() {
@@ -100,7 +100,6 @@ async function loadWebsite() {
         }
     }
 
-    // Rewrite link clicks
     document.addEventListener("click", function(e) {
         const a = e.target.closest("a");
         if (!a || !a.href) return;
@@ -108,14 +107,12 @@ async function loadWebsite() {
         window.location.href = proxify(a.href);
     });
 
-    // Rewrite form submissions
     document.addEventListener("submit", function(e) {
         const form = e.target;
         if (!form.action) return;
         form.action = proxify(form.action);
     });
 
-    // Rewrite JS redirects
     const origAssign = window.location.assign;
     window.location.assign = function(url) {
         origAssign.call(window.location, proxify(url));
@@ -144,13 +141,9 @@ async function loadWebsite() {
 
 function toggleFullScreen() {
     const iframe = document.getElementById('websiteFrame');
-    if (iframe.requestFullscreen) {
-        iframe.requestFullscreen();
-    } else if (iframe.webkitRequestFullscreen) {
-        iframe.webkitRequestFullscreen();
-    } else if (iframe.msRequestFullscreen) {
-        iframe.msRequestFullscreen();
-    }
+    if (iframe.requestFullscreen) iframe.requestFullscreen();
+    else if (iframe.webkitRequestFullscreen) iframe.webkitRequestFullscreen();
+    else if (iframe.msRequestFullscreen) iframe.msRequestFullscreen();
 }
 </script>
 
