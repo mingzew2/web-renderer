@@ -1,3 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Website Viewer</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #f4f4f4;
+    }
+    input[type="text"] {
+        width: 80%;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    button {
+        padding: 10px 15px;
+        border: none;
+        background-color: #28a745;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-bottom: 10px;
+    }
+    button:hover { background-color: #218838; }
+    .fullscreen-button { background-color: #007bff; }
+    .fullscreen-button:hover { background-color: #0056b3; }
+    iframe { 
+        border: none; 
+        width: min(1200px, 80vw); 
+        aspect-ratio: 16 / 9; 
+    }
+    #errorMessage { color: red; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>Website Viewer</h1>
+<input type="text" id="urlInput" placeholder="Enter website URL (http:// or https://)">
+<button onclick="loadWebsite()">Load Website</button>
+<button class="fullscreen-button" onclick="toggleFullScreen()">Toggle Full Screen</button>
+
+<iframe id="websiteFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+<div id="errorMessage"></div>
+
 <script>
 const BACKEND = "https://web-renderer.onrender.com/render";
 
@@ -6,8 +59,14 @@ async function loadWebsite() {
     const errorMessage = document.getElementById('errorMessage');
     let url = document.getElementById('urlInput').value.trim();
 
-    if (!url) { alert("Enter a URL"); return; }
-    if (!url.startsWith("http://") && !url.startsWith("https://")) url = "https://" + url;
+    if (!url) { 
+        alert("Enter a URL"); 
+        return; 
+    }
+
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        url = "https://" + url;
+    }
 
     try {
         const response = await fetch(`${BACKEND}?url=${encodeURIComponent(url)}`);
@@ -15,7 +74,7 @@ async function loadWebsite() {
 
         let html = await response.text();
 
-        // Inject base tag only — safe
+        // Inject base tag so relative CSS/JS works safely
         const baseTag = `<base href="${url}">`;
         if (html.includes("<head>")) html = html.replace("<head>", `<head>${baseTag}`);
         else html = baseTag + html;
@@ -36,3 +95,6 @@ function toggleFullScreen() {
     else if (iframe.msRequestFullscreen) iframe.msRequestFullscreen();
 }
 </script>
+
+</body>
+</html>
