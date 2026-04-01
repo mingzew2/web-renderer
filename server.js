@@ -16,17 +16,12 @@ app.get('/fetch', async (req, res) => {
     if (!url) return res.status(400).send('Missing URL');
 
     try {
-        // Launch Puppeteer with no-sandbox (required on Render)
         const browser = await puppeteer.launch({
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
         });
-
         const page = await browser.newPage();
-        await page.goto(url, { waitUntil: 'networkidle2' }); // wait for page fully loads
-
-        // Get full rendered HTML
+        await page.goto(url, { waitUntil: 'networkidle2' });
         const html = await page.content();
-
         await browser.close();
         res.send(html);
     } catch (err) {
