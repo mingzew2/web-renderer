@@ -5,40 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Website Viewer</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        background-color: #f4f4f4;
-    }
-    input[type="text"] {
-        width: 80%;
-        padding: 10px;
-        margin-bottom: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-    button {
-        padding: 10px 15px;
-        border: none;
-        background-color: #28a745;
-        color: white;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-bottom: 10px;
-    }
-    button:hover { background-color: #218838; }
-    .fullscreen-button { background-color: #007bff; }
-    .fullscreen-button:hover { background-color: #0056b3; }
-    iframe { 
-        border: none; 
-        width: min(1200px, 80vw); 
-        aspect-ratio: 16 / 9; 
-    }
-    #errorMessage { color: red; margin-top: 10px; }
+body { font-family: Arial; margin:0; padding:20px; display:flex; flex-direction:column; align-items:center; background:#f4f4f4;}
+input[type=text]{width:80%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;}
+button{padding:10px 15px;border:none;background:#28a745;color:white;border-radius:4px;cursor:pointer;margin-bottom:10px;}
+button:hover{background:#218838;}
+.fullscreen-button{background:#007bff;}
+.fullscreen-button:hover{background:#0056b3;}
+iframe{border:none;width:min(1200px,80vw);aspect-ratio:16/9;}
+#errorMessage{color:red;margin-top:10px;}
 </style>
 </head>
 <body>
@@ -59,40 +33,31 @@ async function loadWebsite() {
     const errorMessage = document.getElementById('errorMessage');
     let url = document.getElementById('urlInput').value.trim();
 
-    if (!url) { 
-        alert("Enter a URL"); 
-        return; 
-    }
+    if(!url){ alert("Enter a URL"); return; }
+    if(!url.startsWith("http://")&&!url.startsWith("https://")) url="https://"+url;
 
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-        url = "https://" + url;
-    }
-
-    try {
+    try{
         const response = await fetch(`${BACKEND}?url=${encodeURIComponent(url)}`);
-        if (!response.ok) throw new Error("Failed to fetch");
+        if(!response.ok) throw new Error("Backend fetch failed");
 
         let html = await response.text();
-
-        // Inject base tag so relative CSS/JS works safely
         const baseTag = `<base href="${url}">`;
-        if (html.includes("<head>")) html = html.replace("<head>", `<head>${baseTag}`);
+        if(html.includes("<head>")) html = html.replace("<head>", `<head>${baseTag}`);
         else html = baseTag + html;
 
         iframe.srcdoc = html;
-        errorMessage.innerText = "";
-
-    } catch (err) {
-        console.error(err);
-        errorMessage.innerText = "Failed to load site";
+        errorMessage.innerText="";
+    }catch(err){
+        console.error("Error fetching page:", err);
+        errorMessage.innerText="Failed to load site: "+err.message;
     }
 }
 
-function toggleFullScreen() {
+function toggleFullScreen(){
     const iframe = document.getElementById('websiteFrame');
-    if (iframe.requestFullscreen) iframe.requestFullscreen();
-    else if (iframe.webkitRequestFullscreen) iframe.webkitRequestFullscreen();
-    else if (iframe.msRequestFullscreen) iframe.msRequestFullscreen();
+    if(iframe.requestFullscreen) iframe.requestFullscreen();
+    else if(iframe.webkitRequestFullscreen) iframe.webkitRequestFullscreen();
+    else if(iframe.msRequestFullscreen) iframe.msRequestFullscreen();
 }
 </script>
 
