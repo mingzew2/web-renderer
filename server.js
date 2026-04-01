@@ -1,13 +1,14 @@
+// server.js
 const express = require("express");
-const cors = require("cors");
 const puppeteer = require("puppeteer");
+const cors = require("cors");
 
 const app = express();
 app.use(cors());
 
 app.get("/render", async (req, res) => {
     const url = req.query.url;
-    if (!url) return res.status(400).send("Missing url");
+    if (!url) return res.status(400).send("Missing url param");
 
     let browser;
     try {
@@ -15,20 +16,23 @@ app.get("/render", async (req, res) => {
             headless: "new",
             args: ["--no-sandbox", "--disable-setuid-sandbox"]
         });
-
         const page = await browser.newPage();
+
+        // Set user agent so some sites don't block headless
+        await page.setUserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/112.0.0.0 Safari/537.36");
+
         await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
 
         const html = await page.content();
         res.send(html);
-
-    } catch (e) {
-        console.error(e);
-        res.status(500).send("Error loading page");
+    } catch (err) {
+        console.error("Render error:", err);
+        res.status(500).send("Failed to render page");
     } finally {
         if (browser) await browser.close();
     }
 });
 
-const PORT = process.env.PORT || 10000;
+// Render assigns PORT automatically
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
