@@ -1,65 +1,496 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Website Viewer</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JAR Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
-body { font-family: Arial; margin:0; padding:20px; display:flex; flex-direction:column; align-items:center; background:#f4f4f4;}
-input[type=text]{width:80%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;}
-button{padding:10px 15px;border:none;background:#28a745;color:white;border-radius:4px;cursor:pointer;margin-bottom:10px;}
-button:hover{background:#218838;}
-.fullscreen-button{background:#007bff;}
-.fullscreen-button:hover{background:#0056b3;}
-iframe{border:none;width:min(1200px,80vw);aspect-ratio:16/9;}
-#errorMessage{color:red;margin-top:10px;}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  [data-theme="light"]{
+    --bg:#eef1f8;--card:#ffffff;--border:#dde3f0;--border2:#c5cde0;
+    --accent:#0a7c52;--accent2:#1660c4;--warn:#b36b00;--danger:#c0243e;
+    --text:#151828;--muted:#7a84a0;
+    --shadow:0 4px 32px rgba(0,0,0,.09),0 1px 4px rgba(0,0,0,.05);
+    --hint-bg:#f5f7ff;--con-bg:#f0f2f8;--con-text:#1a2040;--grid:rgba(0,0,0,.04);
+  }
+  [data-theme="dark"]{
+    --bg:#03040a;--card:#0d1120;--border:#1c2238;--border2:#252a3c;
+    --accent:#39ff9a;--accent2:#2f8fff;--warn:#ffcb47;--danger:#ff3f5e;
+    --text:#e2e8ff;--muted:#3d4466;
+    --shadow:0 40px 100px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.03) inset;
+    --hint-bg:rgba(255,255,255,.02);--con-bg:#070b14;--con-text:#7ecfaa;--grid:rgba(255,255,255,.018);
+  }
+
+  html,body{height:100%;width:100%;background:var(--bg);color:var(--text);
+    font-family:'Outfit',sans-serif;overflow-y:auto;overflow-x:hidden;transition:background .3s,color .3s}
+
+  #bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+  .shell{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column;
+    align-items:center;padding:2.5rem 1rem 3rem;gap:1.6rem}
+
+  /* ── Card (original structure preserved) ── */
+  .card{width:min(600px,92vw);background:var(--card);border:1px solid var(--border2);
+    border-radius:28px;padding:2.5rem 2.8rem;box-shadow:var(--shadow);
+    transition:background .3s,border-color .3s,box-shadow .3s;
+    animation:up .7s cubic-bezier(.22,1,.36,1) both}
+  @keyframes up{from{opacity:0;transform:translateY(36px) scale(.96)}to{opacity:1;transform:none}}
+
+  .hd{display:flex;align-items:center;gap:.9rem;margin-bottom:1.8rem}
+  .orb-wrap{position:relative;width:46px;height:46px;flex-shrink:0}
+  .orb-ring{position:absolute;inset:0;border-radius:13px;
+    background:conic-gradient(from 0deg,var(--accent),var(--accent2),#a855f7,var(--accent));
+    animation:spin 5s linear infinite;filter:blur(1px)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .orb-inner{position:absolute;inset:2px;border-radius:11px;background:var(--card);
+    display:flex;align-items:center;justify-content:center;font-size:1.3rem;z-index:1;transition:background .3s}
+  .hd-text{flex:1}
+  .hd-title{font-size:1.2rem;font-weight:800;letter-spacing:-.02em}
+  .hd-sub{font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:.15rem}
+  .theme-btn{width:36px;height:36px;border:1px solid var(--border2);border-radius:9px;
+    background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    font-size:1rem;transition:background .2s,transform .15s;color:var(--text);flex-shrink:0}
+  .theme-btn:hover{background:var(--border);transform:scale(1.08)}
+
+  .badge{display:inline-flex;align-items:center;gap:.45rem;padding:.35rem .85rem;
+    border-radius:99px;font-size:.68rem;font-family:'JetBrains Mono',monospace;
+    margin-bottom:1.6rem;border:1px solid transparent;transition:all .35s;width:fit-content}
+  .badge.ok  {background:color-mix(in srgb,var(--accent)  10%,transparent);border-color:color-mix(in srgb,var(--accent)  28%,transparent);color:var(--accent)}
+  .badge.bad {background:color-mix(in srgb,var(--danger)  10%,transparent);border-color:color-mix(in srgb,var(--danger)  28%,transparent);color:var(--danger)}
+  .badge.busy{background:color-mix(in srgb,var(--accent2) 10%,transparent);border-color:color-mix(in srgb,var(--accent2) 28%,transparent);color:var(--accent2)}
+  .bdot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.8s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+  /* upload drop zone — same shape as original pick-btn */
+  .pick-btn{width:100%;padding:1.6rem 1rem;border:2px dashed var(--border2);border-radius:16px;
+    background:transparent;cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:.4rem;
+    transition:border-color .2s,background .2s,box-shadow .2s;
+    margin-bottom:1.4rem;color:var(--text);font-family:'Outfit',sans-serif;position:relative}
+  .pick-btn:hover,.pick-btn.dragover{border-color:var(--accent);border-style:solid;
+    background:color-mix(in srgb,var(--accent) 5%,transparent);
+    box-shadow:0 0 28px color-mix(in srgb,var(--accent) 15%,transparent)}
+  .pick-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .pick-ico{font-size:2rem;pointer-events:none}
+  .pick-label{font-size:.95rem;font-weight:600;pointer-events:none}
+  .pick-sub{font-size:.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;pointer-events:none}
+
+  /* upload progress bar */
+  .upload-bar-wrap{display:none;height:3px;border-radius:2px;background:var(--border);
+    margin-bottom:1rem;overflow:hidden}
+  .upload-bar-wrap.show{display:block}
+  .upload-bar{height:100%;border-radius:2px;width:0%;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
+
+  /* selected file display */
+  .file-display{display:none;align-items:center;gap:.7rem;background:var(--hint-bg);
+    border:1px solid var(--border);border-radius:12px;padding:.8rem 1rem;margin-bottom:1.4rem;
+    font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--accent2);
+    transition:background .3s,border-color .3s}
+  .file-display.show{display:flex}
+  .file-display .file-ico{font-size:1.2rem;flex-shrink:0}
+  .file-name{word-break:break-all;flex:1}
+  .file-size{color:var(--muted);white-space:nowrap;font-size:.65rem}
+  .file-clear{background:none;border:none;cursor:pointer;color:var(--muted);
+    font-size:.9rem;padding:.1rem .3rem;border-radius:4px;transition:color .2s}
+  .file-clear:hover{color:var(--danger)}
+
+  /* manifest row */
+  .mf-row{display:flex;align-items:center;gap:.7rem;margin-bottom:1.4rem}
+  .mf-pick{flex:1;padding:.65rem 1rem;border:1px dashed var(--border2);border-radius:11px;
+    background:transparent;cursor:pointer;display:flex;align-items:center;gap:.5rem;
+    font-family:'Outfit',sans-serif;font-size:.82rem;font-weight:600;
+    color:var(--muted);transition:all .2s;position:relative}
+  .mf-pick input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .mf-pick:hover{border-color:var(--accent2);color:var(--accent2);background:color-mix(in srgb,var(--accent2) 5%,transparent)}
+  .mf-pick.loaded{border-color:var(--accent2);color:var(--accent2);border-style:solid}
+  .mf-name{font-size:.68rem;font-family:'JetBrains Mono',monospace;color:var(--accent2);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+
+  .st{min-height:1.3em;font-size:.75rem;font-family:'JetBrains Mono',monospace;
+    color:var(--muted);margin-bottom:1.3rem;transition:color .2s}
+  .st.ok  {color:var(--accent)}
+  .st.err {color:var(--danger)}
+  .st.info{color:var(--accent2)}
+
+  .btn{width:100%;padding:.88rem;border:none;border-radius:13px;
+    font-family:'Outfit',sans-serif;font-size:.97rem;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:.5rem;
+    transition:all .2s;letter-spacing:.01em}
+  .btn+.btn{margin-top:.65rem}
+  .btn:disabled{opacity:.28;cursor:not-allowed;transform:none!important}
+  .btn:active:not(:disabled){transform:scale(.977)}
+  .btn-launch{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+  [data-theme="dark"] .btn-launch{color:#03040a}
+  .btn-launch:hover:not(:disabled){filter:brightness(1.08)}
+  .btn-kill{background:transparent;border:1px solid var(--danger);color:var(--danger);font-size:.87rem}
+  .btn-kill:hover:not(:disabled){background:color-mix(in srgb,var(--danger) 8%,transparent)}
+  .btn-install{background:transparent;border:1px solid var(--border2);color:var(--warn);font-size:.87rem}
+  .btn-install:hover:not(:disabled){background:color-mix(in srgb,var(--warn) 8%,transparent);
+    border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
+
+  .spinner{width:13px;height:13px;flex-shrink:0;border:2px solid currentColor;
+    border-top-color:transparent;border-radius:50%;animation:rot .5s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
+
+  .tip{margin-top:1.4rem;text-align:center;font-size:.63rem;
+    font-family:'JetBrains Mono',monospace;color:var(--muted)}
+  .tip kbd{background:var(--border);border:1px solid var(--border2);
+    border-radius:4px;padding:.05rem .28rem;font-size:.58rem}
+
+  /* ── Output console below card ── */
+  .console-wrap{width:min(600px,92vw);display:none;flex-direction:column;
+    border-radius:18px;overflow:hidden;border:1px solid var(--border2);
+    box-shadow:var(--shadow);animation:up .4s cubic-bezier(.22,1,.36,1) both}
+  .console-wrap.show{display:flex}
+  .con-hdr{display:flex;align-items:center;gap:.7rem;padding:.55rem 1rem;
+    background:var(--card);border-bottom:1px solid var(--border);
+    font-family:'JetBrains Mono',monospace;font-size:.68rem}
+  .con-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0}
+  .con-dot.pulse{animation:blink 1.4s ease-in-out infinite}
+  .con-title{color:var(--muted);flex:1}
+  .con-clear{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;
+    padding:.1rem .4rem;border-radius:4px;font-family:'JetBrains Mono',monospace;transition:color .2s}
+  .con-clear:hover{color:var(--danger)}
+  #output{background:var(--con-bg);font-family:'JetBrains Mono',monospace;font-size:.75rem;
+    line-height:1.7;color:var(--con-text);padding:.9rem 1.1rem 1rem;
+    max-height:340px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;
+    transition:background .3s,color .3s}
+  #output::-webkit-scrollbar{width:4px}
+  #output::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+  .out-line{display:block;animation:linein .08s ease both}
+  @keyframes linein{from{opacity:0}to{opacity:1}}
+  .out-launch{color:var(--accent)}
+  .out-err{color:var(--danger)}
+  .out-exit{color:var(--warn)}
+  .out-sys{color:var(--accent2)}
 </style>
 </head>
 <body>
 
-<h1>Website Viewer</h1>
-<input type="text" id="urlInput" placeholder="Enter website URL (http:// or https://)">
-<button onclick="loadWebsite()">Load Website</button>
-<button class="fullscreen-button" onclick="toggleFullScreen()">Toggle Full Screen</button>
+<canvas id="bg"></canvas>
+<div class="shell">
 
-<iframe id="websiteFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
-<div id="errorMessage"></div>
+  <div class="card">
+    <div class="hd">
+      <div class="orb-wrap">
+        <div class="orb-ring"></div>
+        <div class="orb-inner">☕</div>
+      </div>
+      <div class="hd-text">
+        <div class="hd-title">JAR Launcher</div>
+        <div class="hd-sub">upload · verify · launch</div>
+      </div>
+      <button class="theme-btn" id="themeBtn" title="Toggle theme">🌙</button>
+    </div>
+
+    <div class="badge busy" id="badge">
+      <span class="bdot"></span>
+      <span id="badgeTxt">Connecting to backend…</span>
+    </div>
+
+    <!-- JAR upload drop zone -->
+    <label class="pick-btn" id="pickJar">
+      <span class="pick-ico">📦</span>
+      <span class="pick-label">Click or drag a JAR file here</span>
+      <span class="pick-sub">Uploads to Replit backend · CLI JARs only</span>
+      <input type="file" id="jarInput" accept=".jar">
+    </label>
+
+    <!-- upload progress bar -->
+    <div class="upload-bar-wrap" id="uploadBarWrap">
+      <div class="upload-bar" id="uploadBar"></div>
+    </div>
+
+    <!-- selected JAR display -->
+    <div class="file-display" id="jarDisplay">
+      <span class="file-ico">📦</span>
+      <span class="file-name" id="jarName">—</span>
+      <span class="file-size" id="jarSize"></span>
+      <button class="file-clear" id="clearJar" title="Clear">✕</button>
+    </div>
+
+    <!-- manifest row -->
+    <div class="mf-row">
+      <label class="mf-pick" id="pickMf">
+        📋 &nbsp;manifest.json
+        <span style="font-weight:300;font-size:.75em;opacity:.6">(optional)</span>
+        <input type="file" id="mfInput" accept=".json">
+      </label>
+      <span class="mf-name" id="mfName" style="display:none"></span>
+    </div>
+
+    <div class="st" id="st"></div>
+
+    <button class="btn btn-launch"  id="btnLaunch"  disabled>▶ &nbsp;Launch JAR</button>
+    <button class="btn btn-kill"    id="btnKill"    style="display:none">■ &nbsp;Kill Process</button>
+    <button class="btn btn-install" id="btnInstall" style="display:none">⬇ &nbsp;Install Java on Server</button>
+
+    <div class="tip">
+      CLI JARs only on hosted backends &nbsp;·&nbsp;
+      output streams below in real time
+    </div>
+  </div>
+
+  <!-- output console -->
+  <div class="console-wrap" id="consoleWrap">
+    <div class="con-hdr">
+      <span class="con-dot" id="conDot"></span>
+      <span class="con-title" id="conTitle">stdout / stderr</span>
+      <button class="con-clear" id="conClear">clear</button>
+    </div>
+    <div id="output"></div>
+  </div>
+
+</div>
 
 <script>
-const BACKEND = "https://web-renderer.onrender.com/render";
+// ─────────────────────────────────────────────────────────────────────────────
+//  STEP 1: Paste your Replit backend URL here (no trailing slash)
+//  Example: "https://jar-launcher.yourusername.repl.co"
+const BASE = "https://YOUR-REPLIT-URL-HERE";
+// ─────────────────────────────────────────────────────────────────────────────
 
-async function loadWebsite() {
-    const iframe = document.getElementById('websiteFrame');
-    const errorMessage = document.getElementById('errorMessage');
-    let url = document.getElementById('urlInput').value.trim();
+const $=id=>document.getElementById(id);
+const badge=$('badge'),badgeTxt=$('badgeTxt');
+const pickJar=$('pickJar'),jarInput=$('jarInput');
+const jarDisplay=$('jarDisplay'),jarName=$('jarName'),jarSize=$('jarSize'),clearJar=$('clearJar');
+const uploadBarWrap=$('uploadBarWrap'),uploadBar=$('uploadBar');
+const pickMf=$('pickMf'),mfInput=$('mfInput'),mfName=$('mfName');
+const stEl=$('st');
+const btnLaunch=$('btnLaunch'),btnKill=$('btnKill'),btnInstall=$('btnInstall');
+const consoleWrap=$('consoleWrap'),output=$('output');
+const conDot=$('conDot'),conTitle=$('conTitle'),conClear=$('conClear');
+const themeBtn=$('themeBtn');
 
-    if(!url){ alert("Enter a URL"); return; }
-    if(!url.startsWith("http://")&&!url.startsWith("https://")) url="https://"+url;
+let uploadedFilename='', manifest={}, javaOk=false, running=false;
 
-    try{
-        const response = await fetch(`${BACKEND}?url=${encodeURIComponent(url)}`);
-        if(!response.ok) throw new Error("Backend fetch failed");
+// ── Theme ──────────────────────────────────────────────────────────────────────
+function isDark(){return document.documentElement.getAttribute('data-theme')==='dark'}
+function setTheme(dark){
+  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  themeBtn.textContent=dark?'☀️':'🌙';
+  try{localStorage.setItem('jar-theme',dark?'dark':'light')}catch(e){}
+}
+setTheme((()=>{try{return localStorage.getItem('jar-theme')==='dark'}catch(e){return false}})());
+themeBtn.onclick=()=>setTheme(!isDark());
 
-        let html = await response.text();
-        const baseTag = `<base href="${url}">`;
-        if(html.includes("<head>")) html = html.replace("<head>", `<head>${baseTag}`);
-        else html = baseTag + html;
-
-        iframe.srcdoc = html;
-        errorMessage.innerText="";
-    }catch(err){
-        console.error("Error fetching page:", err);
-        errorMessage.innerText="Failed to load site: "+err.message;
+// ── Canvas background (original) ───────────────────────────────────────────────
+const cv=$('bg'),cx=cv.getContext('2d');let W,H;
+function rsz(){W=cv.width=innerWidth;H=cv.height=innerHeight}
+rsz();addEventListener('resize',rsz);
+const pts=Array.from({length:75},()=>({
+  x:Math.random()*1920,y:Math.random()*1080,
+  vx:(Math.random()-.5)*.15,vy:(Math.random()-.5)*.15,
+  r:Math.random()*1.2+.3,ci:Math.floor(Math.random()*3)
+}));
+const DC=['#39ff9a','#2f8fff','#a855f7'],LC=['#0a7c52','#1660c4','#7c3aed'];
+function draw(){
+  cx.clearRect(0,0,W,H);
+  cx.strokeStyle=isDark()?'rgba(255,255,255,.018)':'rgba(0,0,0,.04)';cx.lineWidth=1;
+  for(let x=0;x<W;x+=52){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,H);cx.stroke()}
+  for(let y=0;y<H;y+=52){cx.beginPath();cx.moveTo(0,y);cx.lineTo(W,y);cx.stroke()}
+  const C=isDark()?DC:LC;
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+    const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.hypot(dx,dy);
+    if(d<130){
+      cx.strokeStyle=isDark()?`rgba(57,255,154,${.06*(1-d/130)})`:`rgba(10,124,82,${.1*(1-d/130)})`;
+      cx.lineWidth=.5;cx.beginPath();cx.moveTo(pts[i].x,pts[i].y);cx.lineTo(pts[j].x,pts[j].y);cx.stroke();
     }
+  }
+  pts.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+    cx.beginPath();cx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    cx.fillStyle=C[p.ci]+(isDark()?'28':'38');cx.fill();
+  });
+  requestAnimationFrame(draw);
+}
+draw();
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function setSt(msg,cls=''){stEl.textContent=msg;stEl.className='st '+cls}
+function refreshBtn(){btnLaunch.disabled=!(uploadedFilename&&javaOk&&!running)}
+function fmtSize(b){return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB'}
+async function api(path,body){
+  const opts={method:body?'POST':'GET'};
+  if(body){opts.headers={'Content-Type':'application/json'};opts.body=JSON.stringify(body);}
+  const r=await fetch(BASE+path,opts);return r.json();
 }
 
-function toggleFullScreen(){
-    const iframe = document.getElementById('websiteFrame');
-    if(iframe.requestFullscreen) iframe.requestFullscreen();
-    else if(iframe.webkitRequestFullscreen) iframe.webkitRequestFullscreen();
-    else if(iframe.msRequestFullscreen) iframe.msRequestFullscreen();
+// ── Console output ─────────────────────────────────────────────────────────────
+function classifyLine(line){
+  if(line.startsWith('[Launching]'))           return 'out-launch';
+  if(/exited.*code/i.test(line))               return 'out-exit';
+  if(/error|exception|fatal|warn/i.test(line)) return 'out-err';
+  if(line.startsWith('['))                      return 'out-sys';
+  return '';
+}
+function appendLine(line){
+  const s=document.createElement('span');
+  s.className='out-line '+classifyLine(line);
+  s.textContent=line+'\n';
+  output.appendChild(s);
+  output.scrollTop=output.scrollHeight;
+}
+conClear.onclick=()=>{output.innerHTML=''};
+
+// ── SSE ────────────────────────────────────────────────────────────────────────
+let sse=null;
+function connectSSE(){
+  if(sse){sse.close();sse=null;}
+  sse=new EventSource(BASE+'/output');
+  sse.onmessage=e=>appendLine(JSON.parse(e.data));
+  sse.onerror=()=>{sse.close();sse=null;setTimeout(connectSSE,2500)};
+}
+
+// ── State poll ─────────────────────────────────────────────────────────────────
+async function poll(){
+  let s;
+  try{s=await api('/state')}
+  catch(_){setSt('Cannot reach backend — check your Replit URL.','err');return}
+
+  if(s.java_ok){
+    badge.className='badge ok';badgeTxt.textContent='✓ '+s.java_ver;
+    btnInstall.style.display='none';javaOk=true;
+  }else if(['checking','installing'].includes(s.phase)){
+    badge.className='badge busy';badgeTxt.textContent='Installing Java…';
+  }else{
+    badge.className='badge bad';badgeTxt.textContent='✗ Java not found on server';
+    btnInstall.style.display='flex';javaOk=false;
+  }
+
+  const isRunning=s.phase==='running';
+  if(isRunning!==running){
+    running=isRunning;
+    btnLaunch.style.display=isRunning?'none':'flex';
+    btnKill.style.display=isRunning?'flex':'none';
+    conDot.classList.toggle('pulse',isRunning);
+    conTitle.textContent=isRunning?'stdout / stderr  ●  running':'stdout / stderr';
+  }
+
+  if(s.message)setSt(s.message,s.phase==='error'?'err':s.phase==='running'?'ok':'');
+  refreshBtn();
+}
+
+// ── JAR upload (click or drag-and-drop) ───────────────────────────────────────
+jarInput.onchange=()=>{if(jarInput.files[0])handleJar(jarInput.files[0])};
+pickJar.addEventListener('dragover',e=>{e.preventDefault();pickJar.classList.add('dragover')});
+pickJar.addEventListener('dragleave',()=>pickJar.classList.remove('dragover'));
+pickJar.addEventListener('drop',e=>{
+  e.preventDefault();pickJar.classList.remove('dragover');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.name.toLowerCase().endsWith('.jar'))handleJar(f);
+  else setSt('Please drop a .jar file.','err');
+});
+
+async function handleJar(file){
+  if(!file.name.toLowerCase().endsWith('.jar')){setSt('File must be a .jar','err');return}
+  uploadBarWrap.classList.add('show');uploadBar.style.width='0%';
+  setSt('Uploading…','info');pickJar.style.pointerEvents='none';
+  const fd=new FormData();fd.append('jar',file);
+  try{
+    const result=await new Promise((resolve,reject)=>{
+      const xhr=new XMLHttpRequest();
+      xhr.open('POST',BASE+'/upload');
+      xhr.upload.onprogress=e=>{
+        if(e.lengthComputable)uploadBar.style.width=Math.round(e.loaded/e.total*100)+'%';
+      };
+      xhr.onload=()=>{try{resolve(JSON.parse(xhr.responseText))}catch(e){reject(new Error('Bad server response'))}};
+      xhr.onerror=()=>reject(new Error('Network error'));
+      xhr.send(fd);
+    });
+    if(result.ok){
+      uploadedFilename=result.filename;
+      uploadBar.style.width='100%';
+      setTimeout(()=>uploadBarWrap.classList.remove('show'),600);
+      jarName.textContent=file.name;jarSize.textContent=fmtSize(result.size);
+      jarDisplay.classList.add('show');pickJar.style.display='none';
+      setSt('JAR uploaded to server.','ok');
+      consoleWrap.classList.add('show');
+    }else{
+      setSt('Upload failed: '+result.error,'err');
+      uploadBarWrap.classList.remove('show');
+    }
+  }catch(e){
+    setSt('Upload error: '+e.message,'err');
+    uploadBarWrap.classList.remove('show');
+  }
+  pickJar.style.pointerEvents='';refreshBtn();
+}
+
+clearJar.onclick=()=>{
+  uploadedFilename='';jarDisplay.classList.remove('show');
+  pickJar.style.display='flex';jarInput.value='';
+  setSt('');consoleWrap.classList.remove('show');refreshBtn();
+};
+
+// ── Manifest (read locally, send with launch) ──────────────────────────────────
+mfInput.onchange=()=>{
+  const f=mfInput.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      manifest=JSON.parse(e.target.result);
+      mfName.textContent=f.name;mfName.style.display='block';
+      pickMf.classList.add('loaded');setSt('Manifest loaded.','ok');
+    }catch(_){setSt('Invalid JSON in manifest.','err')}
+  };
+  r.readAsText(f);
+};
+
+// ── Launch ─────────────────────────────────────────────────────────────────────
+btnLaunch.onclick=async()=>{
+  btnLaunch.disabled=true;
+  btnLaunch.innerHTML='<span class="spinner"></span> Launching…';
+  output.innerHTML='';consoleWrap.classList.add('show');
+  try{
+    const r=await api('/launch',{filename:uploadedFilename,manifest});
+    if(r.ok){setSt('Running…','ok')}
+    else{setSt('⚠ '+r.error,'err');btnLaunch.innerHTML='▶ &nbsp;Launch JAR';refreshBtn()}
+  }catch(e){
+    setSt('Launch failed — cannot reach backend.','err');
+    btnLaunch.innerHTML='▶ &nbsp;Launch JAR';refreshBtn();
+  }
+};
+
+// ── Kill ───────────────────────────────────────────────────────────────────────
+btnKill.onclick=async()=>{
+  btnKill.disabled=true;
+  try{const r=await api('/kill');setSt(r.ok?'Process killed.':'Kill: '+r.error,'err')}
+  catch(e){setSt('Kill failed.','err')}
+  btnKill.disabled=false;
+};
+
+// ── Install Java on server ─────────────────────────────────────────────────────
+btnInstall.onclick=async()=>{
+  btnInstall.disabled=true;
+  btnInstall.innerHTML='<span class="spinner"></span> Installing on server…';
+  consoleWrap.classList.add('show');
+  try{await api('/install_java')}catch(e){}
+  const iv=setInterval(async()=>{
+    const s=await api('/state').catch(()=>({}));
+    if(s.phase!=='installing'){
+      clearInterval(iv);
+      btnInstall.innerHTML='⬇ &nbsp;Install Java on Server';
+      btnInstall.disabled=false;
+    }
+    await poll();
+  },1200);
+};
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+if(BASE.includes('YOUR-REPLIT-URL-HERE')){
+  setSt('⚠ Set your Replit URL at the top of the <script> block in index.html','err');
+  badge.className='badge bad';badgeTxt.textContent='✗ URL not configured';
+}else{
+  connectSSE();
+  setInterval(poll,2500);
+  poll();
 }
 </script>
-
 </body>
 </html>
